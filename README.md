@@ -1,5 +1,7 @@
 # SoundUtil
 
+[![CI](https://github.com/rbutils/sound_util/actions/workflows/ci.yml/badge.svg)](https://github.com/rbutils/sound_util/actions/workflows/ci.yml)
+
 SoundUtil is a lightweight Ruby library focused on manipulating sound data directly in memory. Its primary goal is to help scripts process and analyze audio buffers using `IO::Buffer`. The API is still evolving and should be considered unstable until version 1.0.
 
 ## Installation
