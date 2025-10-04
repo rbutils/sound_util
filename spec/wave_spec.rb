@@ -108,4 +108,35 @@ RSpec.describe SoundUtil::Wave do
       wave.buffer.read_frame(0).first.should == 16_384
     end
   end
+
+  describe "#play" do
+    let(:wave) { described_class.new(frames: 4) { 0.1 } }
+
+    it "pipes audio into a playback command" do
+      fake_io = StringIO.new
+      fake_io.define_singleton_method(:pid) { 1234 }
+      fake_io.define_singleton_method(:close_write) { close }
+
+      Process.should_receive(:wait).with(1234)
+      IO.should_receive(:popen).with(array_including("aplay", "-"), "wb").and_yield(fake_io)
+
+      wave.play
+
+      fake_io.string.bytesize.should == wave.buffer.size
+    end
+
+    it "raises SoundUtil::Error when command missing" do
+      IO.should_receive(:popen).and_raise(Errno::ENOENT)
+
+      -> { wave.play(command: ["missing-cmd"]) }.should raise_error(SoundUtil::Error)
+    end
+
+    it "accepts a custom IO" do
+      fake_io = StringIO.new
+
+      wave.play(io: fake_io)
+
+      fake_io.string.bytesize.should == wave.buffer.size
+    end
+  end
 end

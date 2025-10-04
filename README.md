@@ -58,6 +58,13 @@ wave.fade_in!(seconds: 0.1)     # in-place fade-in over the first 0.1s
 wave.fade_out!(seconds: 0.1)    # in-place fade-out over the last 0.1s
 ```
 
+```ruby
+wave.play                         # pipes to the default `aplay` command
+wave.play(command: ["ffplay", "-autoexit", "-nodisp", "-f", "s16le", "-ar", wave.sample_rate.to_s, "-ac", wave.channels.to_s, "-"])
+```
+
+`Wave#play` shells out to `aplay` by default. Provide `command:` with a string/array when targeting other tools (e.g. `ffplay`, `afplay`).
+
 ### CLI
 
 The Thor CLI emits raw PCM suitable for piping into a sound device:

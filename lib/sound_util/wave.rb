@@ -2,6 +2,7 @@
 
 require_relative "filter"
 require_relative "generator"
+require_relative "sink"
 
 module SoundUtil
   class Wave
@@ -10,6 +11,7 @@ module SoundUtil
     extend SoundUtil::Generator::Tone
     include SoundUtil::Filter::Gain
     include SoundUtil::Filter::Fade
+    include SoundUtil::Sink::Playback
 
     SUPPORTED_FORMATS = {
       s16le: {

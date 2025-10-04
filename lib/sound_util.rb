@@ -8,5 +8,6 @@ module SoundUtil
   autoload :CLI, "sound_util/cli"
   autoload :Filter, "sound_util/filter"
   autoload :Generator, "sound_util/generator"
+  autoload :Sink, "sound_util/sink"
   autoload :Wave, "sound_util/wave"
 end
