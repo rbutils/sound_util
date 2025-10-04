@@ -14,6 +14,8 @@ module SoundUtil
         end
       end
 
+      alias * gain
+
       private
 
       def scale_sample(sample, factor, info)
