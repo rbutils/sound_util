@@ -65,6 +65,20 @@ wave.play(command: ["ffplay", "-autoexit", "-nodisp", "-f", "s16le", "-ar", wave
 
 `Wave#play` shells out to `aplay` by default. Provide `command:` with a string/array when targeting other tools (e.g. `ffplay`, `afplay`).
 
+### Indexing
+
+```ruby
+wave[0]          # => [Float, Float] for all channels in the first frame
+wave[0, 1]       # => Float for a specific channel
+wave[100..200]   # => new Wave containing that frame range
+wave[0..-1, 0]   # => mono Wave extracted from channel 0
+
+wave[0] = [0.5, -0.5]
+wave[10..20] = SoundUtil::Wave.sine(duration_seconds: 0.25, frequency: 880)
+```
+
+Values are normalised to the `-1.0..1.0` range when read and clamped when written.
+
 ### CLI
 
 The Thor CLI emits raw PCM suitable for piping into a sound device:

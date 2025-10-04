@@ -109,6 +109,63 @@ RSpec.describe SoundUtil::Wave do
     end
   end
 
+  describe "indexing" do
+    let(:wave) do
+      SoundUtil::Wave.new(channels: 2, sample_rate: 8, frames: 4) do |frame|
+        [frame / 4.0, -frame / 4.0]
+      end
+    end
+
+    it "returns floats for single frame" do
+      wave[0].should == [0.0, 0.0]
+      wave[1, 0].should be_within(1e-4).of(0.25)
+    end
+
+    it "returns a sub-wave for frame ranges" do
+      sub = wave[1..2]
+      sub.should be_a(SoundUtil::Wave)
+      sub.frames.should == 2
+      sub.channels.should == 2
+      sub[0].first.should be_within(1e-4).of(0.25)
+    end
+
+    it "supports channel ranges" do
+      sub = wave[0..2, 0]
+      sub.channels.should == 1
+      sub[1].should be_within(1e-4).of(0.25)
+    end
+
+    it "assigns numeric values" do
+      wave[0] = 0.5
+      wave[0][0].should be_within(1e-4).of(0.5)
+      wave[0][1].should be_within(1e-4).of(0.5)
+
+      wave[1, 1] = -0.25
+      wave[1, 1].should be_within(1e-4).of(-0.25)
+    end
+
+    it "assigns arrays across frames" do
+      wave[0..1] = [[0.1, -0.1], [0.2, -0.2]]
+
+      wave[0][0].should be_within(1e-4).of(0.1)
+      wave[0][1].should be_within(1e-4).of(-0.1)
+      wave[1][0].should be_within(1e-4).of(0.2)
+      wave[1][1].should be_within(1e-4).of(-0.2)
+    end
+
+    it "assigns using another wave" do
+      other = SoundUtil::Wave.new(channels: 2, sample_rate: 8, frames: 2) do |frame|
+        [frame * 0.1, frame * 0.2]
+      end
+
+      wave[1..2] = other
+
+      wave[1].each { |sample| sample.should be_within(1e-4).of(0.0) }
+      wave[2][0].should be_within(1e-4).of(0.1)
+      wave[2][1].should be_within(1e-4).of(0.2)
+    end
+  end
+
   describe "#play" do
     let(:wave) { described_class.new(frames: 4) { 0.1 } }
 

@@ -74,6 +74,38 @@ module SoundUtil
       end
     end
 
+    def [](*args)
+      frame_spec, channel_spec = args
+      frame_indices = frame_indices_for(frame_spec)
+      channel_indices = channel_indices_for(channel_spec)
+
+      if frame_indices.length == 1 && channel_indices.length == 1
+        frame = buffer.read_frame(frame_indices.first)
+        sample_to_float(frame[channel_indices.first])
+      elsif frame_indices.length == 1
+        frame = buffer.read_frame(frame_indices.first)
+        channel_indices.map { |idx| sample_to_float(frame[idx]) }
+      else
+        build_subwave(frame_indices, channel_indices)
+      end
+    end
+
+    def []=(*args, value)
+      frame_spec, channel_spec = args
+      frame_indices = frame_indices_for(frame_spec)
+      channel_indices = channel_indices_for(channel_spec)
+
+      encoded_frames = encoded_values_for_assignment(value, frame_indices.length, channel_indices.length)
+
+      frame_indices.each_with_index do |frame_idx, frame_pos|
+        samples = buffer.read_frame(frame_idx)
+        channel_indices.each_with_index do |channel_idx, ch_pos|
+          samples[channel_idx] = encoded_frames[frame_pos][ch_pos]
+        end
+        buffer.write_frame(frame_idx, samples)
+      end
+    end
+
     def pipe(io = $stdout)
       io.binmode if io.respond_to?(:binmode)
       io.write(to_string)
@@ -151,6 +183,133 @@ module SoundUtil
         buffer.write_frame(frame_idx, new_samples)
       end
       self
+    end
+
+    def frame_indices_for(spec)
+      indices_for(spec, frames)
+    end
+
+    def channel_indices_for(spec)
+      indices_for(spec, channels)
+    end
+
+    def indices_for(spec, size)
+      case spec
+      when nil
+        (0...size).to_a
+      when Integer
+        [normalize_index(spec, size)]
+      when Range
+        range_to_indices(spec, size)
+      else
+        raise ArgumentError, "unsupported index specification: #{spec.inspect}"
+      end
+    end
+
+    def normalize_index(idx, size)
+      idx += size if idx.negative?
+      raise IndexError, "index #{idx} out of bounds" unless idx.between?(0, size - 1)
+
+      idx
+    end
+
+    def range_to_indices(range, size)
+      start = range.begin.nil? ? 0 : normalize_index(range.begin, size)
+      finish = range.end.nil? ? size - 1 : normalize_index(range.end, size)
+      finish -= 1 if range.exclude_end?
+      raise IndexError, "empty range" if finish < start
+
+      (start..finish).to_a
+    end
+
+    def build_subwave(frame_indices, channel_indices)
+      new_buffer = Buffer.new(
+        channels: channel_indices.length,
+        sample_rate: sample_rate,
+        frames: frame_indices.length,
+        format: format
+      )
+
+      frame_indices.each_with_index do |frame_idx, new_frame_idx|
+        source = buffer.read_frame(frame_idx)
+        selected = channel_indices.map { |channel_idx| source[channel_idx] }
+        new_buffer.write_frame(new_frame_idx, selected)
+      end
+
+      Wave.new(
+        channels: channel_indices.length,
+        sample_rate: sample_rate,
+        frames: frame_indices.length,
+        format: format,
+        buffer: new_buffer
+      )
+    end
+
+    def sample_to_float(sample)
+      info = format_info
+      return -1.0 if sample <= info[:min]
+
+      sample.to_f / info[:float_scale]
+    end
+
+    def encoded_values_for_assignment(value, frame_count, channel_count)
+      case value
+      when Wave
+        ensure_wave_compatibility!(value, frame_count, channel_count)
+        Array.new(frame_count) do |frame_idx|
+          frame = value.buffer.read_frame(frame_idx)
+          channel_count.times.map { |ch_idx| frame[ch_idx] }
+        end
+      when Numeric
+        encoded = encode_value(value)
+        Array.new(frame_count) { Array.new(channel_count, encoded) }
+      when Array
+        encode_array_assignment(value, frame_count, channel_count)
+      else
+        raise ArgumentError, "unsupported assignment value: #{value.inspect}"
+      end
+    end
+
+    def ensure_wave_compatibility!(other_wave, frame_count, channel_count)
+      unless other_wave.frames == frame_count && other_wave.channels == channel_count
+        raise ArgumentError, "wave dimensions mismatch"
+      end
+
+      return if other_wave.format == format && other_wave.sample_rate == sample_rate
+
+      raise ArgumentError, "wave format or sample rate mismatch"
+    end
+
+    def encode_array_assignment(value, frame_count, channel_count)
+      if frame_count == 1
+        [encode_channel_values(value, channel_count)]
+      elsif value.length == frame_count
+        value.map { |entry| encode_channel_values(entry, channel_count) }
+      else
+        encoded = encode_channel_values(value, channel_count)
+        Array.new(frame_count) { encoded.dup }
+      end
+    end
+
+    def encode_channel_values(entry, channel_count)
+      if channel_count == 1
+        [encode_value(entry)]
+      else
+        case entry
+        when Numeric
+          encoded = encode_value(entry)
+          Array.new(channel_count, encoded)
+        when Array
+          raise ArgumentError, "channel count mismatch" unless entry.length == channel_count
+
+          entry.map { |val| encode_value(val) }
+        when NilClass
+          encoded = encode_value(0)
+          Array.new(channel_count, encoded)
+        else
+          raise ArgumentError, "unsupported channel assignment value: #{entry.inspect}"
+        end
+      end
     end
   end
 end
