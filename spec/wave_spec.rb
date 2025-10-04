@@ -2,6 +2,7 @@
 
 require "spec_helper"
 require "stringio"
+require "image_util/terminal"
 
 RSpec.describe SoundUtil::Wave do
   describe ".new" do
@@ -194,6 +195,43 @@ RSpec.describe SoundUtil::Wave do
       wave.play(io: fake_io)
 
       fake_io.string.bytesize.should == wave.buffer.size
+    end
+  end
+
+  describe "#preview" do
+    let(:wave) { described_class.sine(duration_seconds: 0.1, sample_rate: 800, channels: 2, frequency: 220) }
+
+    it "renders preview" do
+      io = StringIO.new
+      ImageUtil::Terminal.should_receive(:output_image).and_return("--preview--")
+
+      wave.preview(io)
+
+      io.string.should include("--preview--")
+    end
+
+    it "falls back to text when rendering fails" do
+      io = StringIO.new
+      ImageUtil::Terminal.should_receive(:output_image).and_return(nil)
+
+      wave.preview(io)
+
+      io.string.should include("[wave preview unavailable]")
+    end
+  end
+
+  describe "#pretty_print" do
+    let(:wave) { described_class.new(frames: 4) { 0.1 } }
+
+    it "renders preview via pretty printer" do
+      output = StringIO.new
+      pp = double("pp", output: output, flush: nil)
+      pp.should_receive(:text).with("", 0)
+      ImageUtil::Terminal.should_receive(:output_image).and_return("--preview--")
+
+      wave.pretty_print(pp)
+
+      output.string.should include("--preview--")
     end
   end
 end

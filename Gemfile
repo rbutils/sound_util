@@ -5,6 +5,8 @@ source "https://rubygems.org"
 # Specify your gem's dependencies in sound_util.gemspec
 gemspec
 
+gem "image_util", path: "../image_util"
+
 gem "irb"
 gem "rake", "~> 13.0"
 

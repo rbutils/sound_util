@@ -79,6 +79,14 @@ wave[10..20] = SoundUtil::Wave.sine(duration_seconds: 0.25, frequency: 880)
 
 Values are normalised to the `-1.0..1.0` range when read and clamped when written.
 
+### Preview
+
+```ruby
+SoundUtil::Wave.sine(duration_seconds: 1, frequency: 440).preview
+```
+
+Renders a compact Sixel chart (requires ImageUtil and terminal support). Pass `width:`/`height:` options to adjust the preview
+
 ### CLI
 
 The Thor CLI emits raw PCM suitable for piping into a sound device:

@@ -35,6 +35,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "base64"
   spec.add_dependency "ffi", "~> 1.16"
+  spec.add_dependency "image_util"
   spec.add_dependency "io-console", "~> 0.5"
   spec.add_dependency "thor", "~> 1.2"
 end

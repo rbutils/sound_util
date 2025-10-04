@@ -12,6 +12,7 @@ module SoundUtil
     include SoundUtil::Filter::Gain
     include SoundUtil::Filter::Fade
     include SoundUtil::Sink::Playback
+    include SoundUtil::Sink::Preview
 
     SUPPORTED_FORMATS = {
       s16le: {
