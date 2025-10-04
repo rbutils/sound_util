@@ -20,11 +20,55 @@ bundle install
 
 ## Usage
 
+Generate a 440 Hz stereo sine wave and stream it to stdout (pipeable into
+`aplay`, `ffplay`, etc.):
+
 ```ruby
 require "sound_util"
 
-# TODO: usage example
+duration    = 2.0
+sample_rate = 44_100
+channels    = 2
+
+wave = SoundUtil::Wave.sine(
+  duration_seconds: duration,
+  sample_rate: sample_rate,
+  channels: channels,
+  frequency: 440.0,
+  amplitude: 0.6
+)
+
+wave.pipe($stdout)
 ```
+
+Blocks passed to `SoundUtil::Wave.new` yield the frame index and may return a
+scalar (applied to all channels) or an array of per-channel sample values.
+Floats are treated as `-1.0..1.0` amplitudes and integers are clamped to the
+target PCM range.
+
+### Filters
+
+Waves provide mutable/immutable filters similar to `image_util`:
+
+```ruby
+wave = SoundUtil::Wave.sine(duration_seconds: 1, frequency: 220)
+
+wave = wave.gain(0.25)          # return a quieter copy
+wave.fade_in!(seconds: 0.1)     # in-place fade-in over the first 0.1s
+wave.fade_out!(seconds: 0.1)    # in-place fade-out over the last 0.1s
+```
+
+### CLI
+
+The Thor CLI emits raw PCM suitable for piping into a sound device:
+
+```sh
+bundle exec exe/sound_util generate sine \
+  --seconds 2 --rate 44100 --channels 2 --frequency 440 --amplitude 0.6 \
+  | aplay -f S16_LE -c 2 -r 44100
+```
+
+Use `--output path.pcm` to write to a file instead of stdout.
 
 ## Development
 
