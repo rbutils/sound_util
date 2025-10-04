@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+# Silence a warning.
+Warning[:experimental] = false
+
 module SoundUtil
   class Wave
     class Buffer
