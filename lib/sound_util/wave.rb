@@ -5,6 +5,9 @@ require_relative "filter"
 require_relative "generator"
 require_relative "sink"
 
+# Preload this class to overcome an IRB issue with displaying images
+ImageUtil::Image
+
 module SoundUtil
   class Wave
     autoload :Buffer, "sound_util/wave/buffer"
