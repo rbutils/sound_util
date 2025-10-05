@@ -58,6 +58,28 @@ wave.fade_in!(seconds: 0.1)     # in-place fade-in over the first 0.1s
 wave.fade_out!(seconds: 0.1)    # in-place fade-out over the last 0.1s
 ```
 
+### Combining waves
+
+```ruby
+intro = SoundUtil::Wave.sine(duration_seconds: 0.5, frequency: 440)
+outro = SoundUtil::Wave.silence(duration_seconds: 0.25)
+
+full  = intro + outro           # append, returns a new wave
+intro << outro                  # append in place
+
+vocals = SoundUtil::Wave.sine(duration_seconds: 0.5, frequency: 220)
+mix    = vocals | intro         # mix with sample clamping
+
+stereo = vocals & intro         # stack channels together
+mono   = stereo.channel(0)      # extract an individual channel
+```
+
+`#+` and `#<<` append clips end-to-end (requiring matching sample rates, formats,
+and channel counts). `#|` mixes two clips frame-by-frame with automatic
+clamping, and `#&` stacks their channels using the longest duration from either
+wave. Use `Wave#channel(index)` to materialize a single channel as its own
+wave.
+
 ```ruby
 wave.play                         # pipes to the default `aplay` command
 wave.play(command: ["ffplay", "-autoexit", "-nodisp", "-f", "s16le", "-ar", wave.sample_rate.to_s, "-ac", wave.channels.to_s, "-"])

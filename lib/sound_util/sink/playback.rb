@@ -24,6 +24,7 @@ module SoundUtil
         IO.popen(cmd, "wb") do |handle|
           pipe(handle)
           handle.close_write
+          Process.wait(handle.pid) if handle.respond_to?(:pid)
         end
         self
       rescue Errno::ENOENT

@@ -8,17 +8,13 @@ module SoundUtil
       DEFAULT_WIDTH = 600
       DEFAULT_HEIGHT = 28
 
-      def preview(width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT, caption: nil)
+      def preview(io = $stdout, width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT, caption: nil)
         renderer = PreviewRenderer.new(self, width: width, height: height, caption: caption)
         rendered = renderer.render
-        if rendered
-          puts rendered
-        else
-          puts "[wave preview unavailable]"
-        end
+        io.puts(rendered || "[wave preview unavailable]")
         self
       rescue LoadError
-        puts "[wave preview unavailable]"
+        io.puts "[wave preview unavailable]"
         self
       end
 

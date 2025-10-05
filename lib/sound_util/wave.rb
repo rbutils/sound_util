@@ -9,8 +9,10 @@ module SoundUtil
     autoload :Buffer, "sound_util/wave/buffer"
 
     extend SoundUtil::Generator::Tone
+    extend SoundUtil::Generator::Combine
     include SoundUtil::Filter::Gain
     include SoundUtil::Filter::Fade
+    include SoundUtil::Filter::Combine
     include SoundUtil::Sink::Playback
     include SoundUtil::Sink::Preview
 
@@ -91,6 +93,13 @@ module SoundUtil
       end
     end
 
+    def channel(index)
+      indices = channel_indices_for(index)
+      raise ArgumentError, "channel index must reference a single channel" unless indices.length == 1
+
+      build_subwave(frame_indices_for(nil), indices)
+    end
+
     def []=(*args, value)
       frame_spec, channel_spec = args
       frame_indices = frame_indices_for(frame_spec)
@@ -126,6 +135,10 @@ module SoundUtil
 
     def initialize_from_buffer(other_buffer)
       @buffer = other_buffer
+      @channels = other_buffer.channels
+      @sample_rate = other_buffer.sample_rate
+      @frames = other_buffer.frames
+      @format = other_buffer.format
     end
 
     def initialize_copy(other)

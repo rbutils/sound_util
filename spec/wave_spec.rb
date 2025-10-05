@@ -83,6 +83,71 @@ RSpec.describe SoundUtil::Wave do
     end
   end
 
+  describe "combining waves" do
+    it "concatenates waves with +" do
+      left = described_class.new(channels: 1, sample_rate: 4, frames: 2) { |frame| frame.zero? ? 0.5 : -0.5 }
+      right = described_class.new(channels: 1, sample_rate: 4, frames: 1) { 0.25 }
+
+      combined = left + right
+
+      combined.frames.should == 3
+      combined.channels.should == 1
+      combined[0].should be_within(1e-4).of(0.5)
+      combined[1].should be_within(1e-4).of(-0.5)
+      combined[2].should be_within(1e-4).of(0.25)
+
+      left.frames.should == 2
+    end
+
+    it "appends waves in place with <<" do
+      wave = described_class.new(channels: 1, sample_rate: 4, frames: 1) { -0.25 }
+      other = described_class.new(channels: 1, sample_rate: 4, frames: 2) { |frame| frame.zero? ? 0.75 : 0.5 }
+
+      (wave << other).should equal(wave)
+      wave.frames.should == 3
+      wave[0].should be_within(1e-4).of(-0.25)
+      wave[1].should be_within(1e-4).of(0.75)
+      wave[2].should be_within(1e-4).of(0.5)
+    end
+
+    it "mixes waves with |" do
+      first = described_class.new(channels: 1, sample_rate: 8, frames: 3) { |frame| frame.zero? ? 0.6 : 0.4 }
+      second = described_class.new(channels: 1, sample_rate: 8, frames: 2) { 0.7 }
+
+      mixed = first | second
+
+      mixed.frames.should == 3
+      mixed[0].should be_within(1e-4).of(1.0)
+      mixed[1].should be_within(1e-4).of(1.0)
+      mixed[2].should be_within(1e-4).of(0.4)
+    end
+
+    it "stacks channels with &" do
+      mono = described_class.new(channels: 1, sample_rate: 2, frames: 2) { |frame| frame.zero? ? 0.5 : -0.5 }
+      extra = described_class.new(channels: 1, sample_rate: 2, frames: 3) { 0.25 }
+
+      stacked = mono & extra
+
+      stacked.channels.should == 2
+      stacked.frames.should == 3
+      stacked[0][0].should be_within(1e-4).of(0.5)
+      stacked[0][1].should be_within(1e-4).of(0.25)
+      stacked[1][0].should be_within(1e-4).of(-0.5)
+      stacked[1][1].should be_within(1e-4).of(0.25)
+      stacked[2][0].should be_within(1e-4).of(0.0)
+      stacked[2][1].should be_within(1e-4).of(0.25)
+    end
+
+    it "raises when formats differ" do
+      left = described_class.new(channels: 1, sample_rate: 4, frames: 1)
+      right = described_class.new(channels: 1, sample_rate: 8, frames: 1)
+
+      -> { left + right }.should raise_error(ArgumentError)
+      -> { left | right }.should raise_error(ArgumentError)
+      -> { left & right }.should raise_error(ArgumentError)
+    end
+  end
+
   describe "#pipe" do
     it "writes raw PCM bytes to the given IO" do
       wave = described_class.silence(
@@ -164,6 +229,38 @@ RSpec.describe SoundUtil::Wave do
       wave[1].each { |sample| sample.should be_within(1e-4).of(0.0) }
       wave[2][0].should be_within(1e-4).of(0.1)
       wave[2][1].should be_within(1e-4).of(0.2)
+    end
+  end
+
+  describe "#channel" do
+    it "returns a single-channel wave" do
+      wave = described_class.new(channels: 2, sample_rate: 4, frames: 2) do |frame|
+        [frame.zero? ? 0.5 : 0.25, frame.zero? ? -0.5 : -0.25]
+      end
+
+      channel = wave.channel(1)
+
+      channel.should be_a(described_class)
+      channel.channels.should == 1
+      channel.frames.should == 2
+      channel[0].should be_within(1e-4).of(-0.5)
+      channel[1].should be_within(1e-4).of(-0.25)
+    end
+
+    it "accepts negative indices" do
+      wave = described_class.new(channels: 3, sample_rate: 4, frames: 1) do
+        [0.1, 0.2, 0.3]
+      end
+
+      channel = wave.channel(-1)
+
+      channel[0].should be_within(1e-4).of(0.3)
+    end
+
+    it "raises when multiple channels requested" do
+      wave = described_class.new(channels: 2, sample_rate: 4, frames: 1) { [0.0, 0.0] }
+
+      -> { wave.channel(0..1) }.should raise_error(ArgumentError)
     end
   end
 
