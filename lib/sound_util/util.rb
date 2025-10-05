@@ -32,6 +32,20 @@ module SoundUtil
       Array.new(channels, 0)
     end
 
+    def fill_channels(value, channels)
+      if value.is_a?(Array)
+        raise ArgumentError, "channel count mismatch" unless value.length == channels
+
+        value.dup
+      else
+        Array.new(channels, value)
+      end
+    end
+
+    def fill_frames(value, frames, channels)
+      Array.new(frames) { fill_channels(value, channels) }
+    end
+
     def ensure_same_kind!(left, right)
       assert_same_class!(left, right)
       assert_same_format!(left, right)
@@ -42,10 +56,10 @@ module SoundUtil
       assert_channel_count!(wave, channels) if channels
     end
 
-    def build_buffer(reference, channels:, frames:, format: reference.format)
+    def build_buffer(reference, channels:, frames:, format: reference.format, sample_rate: reference.sample_rate)
       reference.class::Buffer.new(
         channels: channels,
-        sample_rate: reference.sample_rate,
+        sample_rate: sample_rate,
         frames: frames,
         format: format
       )
@@ -59,14 +73,6 @@ module SoundUtil
         format: buffer.format,
         buffer: buffer
       )
-    end
-
-    def fill_channels(value, channels)
-      Array.new(channels) { value.is_a?(Array) ? value.dup : value }
-    end
-
-    def fill_frames(value, frames, channels)
-      Array.new(frames) { fill_channels(value, channels) }
     end
 
     def extract_channel_samples(frame, count)

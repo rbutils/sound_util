@@ -96,6 +96,53 @@ RSpec.describe SoundUtil::Wave do
     end
   end
 
+  describe "resample filter" do
+    it "upsamples with linear interpolation" do
+      wave = SoundUtil::Wave.new(sample_rate: 4, frames: 4) { |frame| frame / 3.0 }
+
+      resampled = wave.resample(8)
+
+      resampled.sample_rate.should == 8
+      resampled.frames.should == 8
+      resampled[0, 0].should be_within(1e-3).of(0.0)
+      resampled[1, 0].should be_within(1e-3).of(1.0 / 6)
+      resampled[3, 0].should be_within(1e-3).of(0.5)
+      resampled[7, 0].should be_within(1e-3).of(1.0)
+    end
+
+    it "downsamples while preserving duration" do
+      wave = SoundUtil::Wave.new(sample_rate: 8, frames: 8) { |frame| frame / 7.0 }
+
+      resampled = wave.resample(4)
+
+      resampled.sample_rate.should == 4
+      resampled.frames.should == 4
+      resampled[1, 0].should be_within(1e-3).of(2 / 7.0)
+      resampled[2, 0].should be_within(1e-3).of(4 / 7.0)
+    end
+
+    it "supports in-place resampling" do
+      wave = SoundUtil::Wave.new(sample_rate: 6, frames: 6) { 0.25 }
+      wave.resample!(3).should equal(wave)
+      wave.sample_rate.should == 3
+      wave.frames.should == 3
+      wave[0, 0].should be_within(1e-3).of(0.25)
+    end
+
+    it "allows overriding target frame count" do
+      wave = SoundUtil::Wave.new(sample_rate: 4, frames: 4) { 0.1 }
+      resampled = wave.resample(4, frames: 2)
+
+      resampled.sample_rate.should == 4
+      resampled.frames.should == 2
+    end
+
+    it "raises on invalid sample rate" do
+      wave = SoundUtil::Wave.new(frames: 2) { 0.0 }
+      -> { wave.resample(0) }.should raise_error(ArgumentError)
+    end
+  end
+
   describe "filters" do
     let(:wave) do
       described_class.new(channels: 1, sample_rate: 4, frames: 4) { 0.5 }

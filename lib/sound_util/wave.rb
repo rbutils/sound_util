@@ -15,6 +15,7 @@ module SoundUtil
     include SoundUtil::Filter::Gain
     include SoundUtil::Filter::Fade
     include SoundUtil::Filter::Combine
+    include SoundUtil::Filter::Resample
     include SoundUtil::Sink::Playback
     include SoundUtil::Sink::Preview
 
@@ -378,7 +379,7 @@ module SoundUtil
         value.map { |entry| encode_channel_values(entry, channel_count) }
       else
         encoded = encode_channel_values(value, channel_count)
-        Array.new(frame_count) { encoded.dup }
+        Util.fill_frames(encoded, frame_count, channel_count)
       end
     end
 

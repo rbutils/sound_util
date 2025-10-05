@@ -6,5 +6,6 @@ module SoundUtil
     autoload :Gain, "sound_util/filter/gain"
     autoload :Fade, "sound_util/filter/fade"
     autoload :Combine, "sound_util/filter/combine"
+    autoload :Resample, "sound_util/filter/resample"
   end
 end

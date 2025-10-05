@@ -56,7 +56,10 @@ wave = SoundUtil::Wave.sine(duration_seconds: 1, frequency: 220)
 wave = wave.gain(0.25)          # return a quieter copy
 wave.fade_in!(seconds: 0.1)     # in-place fade-in over the first 0.1s
 wave.fade_out!(seconds: 0.1)    # in-place fade-out over the last 0.1s
+wave = wave.resample(48_000)         # adjust sample rate with linear interpolation
 ```
+
+`Wave#resample(rate, frames: nil)` performs linear interpolation and updates both sample rate and frame count (pass `frames:` to override duration).
 
 ### WAV input/output
 
