@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.1.0] - 2025-10-05
 
 - Add `SoundUtil::Wave` and `Wave::Buffer` with `IO::Buffer`-backed PCM storage.
 - Introduce generator/filter/sink subsystems mirroring `image_util`: tone generators (`.sine`, `.silence`), gain/fade filters, playback helper (`Wave#play`), and immutable/bang variants.
@@ -12,7 +12,4 @@
 - Add `Wave#preview` sink for ImageUtil-based waveform charts.
 - CLI `generate` command for sine and silence waveforms; emit raw PCM suitable for piping to sound cards.
 - Set up GitHub Actions CI workflow
-
-## [0.1.0] - 2025-09-05
-
 - Initial release
