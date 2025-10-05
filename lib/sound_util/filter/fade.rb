@@ -20,11 +20,10 @@ module SoundUtil
       def apply_fade!(seconds, direction)
         fade_frames = (seconds * sample_rate).to_i
         fade_frames = [[fade_frames, 1].max, frames].min
-        info = format_info
 
         mutate_frames! do |frame_idx, samples|
           factor = fade_factor(frame_idx, fade_frames, direction)
-          samples.map { |sample| scale_sample(sample, factor, info) }
+          samples.map { |sample| encode_value(sample_to_float(sample) * factor) }
         end
       end
 
@@ -42,10 +41,6 @@ module SoundUtil
         else
           1.0
         end
-      end
-
-      def scale_sample(sample, factor, info)
-        (sample * factor).round.clamp(info[:min], info[:max])
       end
     end
   end

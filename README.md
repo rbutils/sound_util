@@ -58,6 +58,25 @@ wave.fade_in!(seconds: 0.1)     # in-place fade-in over the first 0.1s
 wave.fade_out!(seconds: 0.1)    # in-place fade-out over the last 0.1s
 ```
 
+### WAV input/output
+
+```ruby
+wave  = SoundUtil::Wave.from_file("input.wav")
+bytes = wave.to_string(:wav)               # defaults to source format
+
+wave = SoundUtil::Wave.new(frames: 2) { 0.2 }
+wave.to_file("output.wav")                # writes RIFF/WAVE by default
+
+io = StringIO.new
+wave.to_file(io, :wav, sample_format: :f32le) # encode with custom format
+```
+
+`SoundUtil::Wave.from_data(data, format: :wav)` decodes in-memory WAV blobs,
+while `from_file` accepts paths or IO objects (auto-detecting formats via the
+Magic helper). Encoding supports the common PCM/float variants (`:u8`,
+`:s16le`, `:s24le`, `:s32le`, `:f32le`, `:f64le`). Pass `sample_format:` when
+you need to transcode to a different width before writing.
+
 ### Combining waves
 
 ```ruby

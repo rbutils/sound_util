@@ -17,12 +17,47 @@ module SoundUtil
     include SoundUtil::Sink::Preview
 
     SUPPORTED_FORMATS = {
+      u8: {
+        bytes_per_sample: 1,
+        min: 0,
+        max: 255,
+        pack_code: "C",
+        float_scale: 127.5,
+        zero_offset: 128,
+        type: :unsigned
+      },
       s16le: {
         bytes_per_sample: 2,
         min: -32_768,
         max: 32_767,
         pack_code: "s<",
-        float_scale: 32_767
+        float_scale: 32_767,
+        type: :signed
+      },
+      s24le: {
+        bytes_per_sample: 3,
+        min: -8_388_608,
+        max: 8_388_607,
+        float_scale: 8_388_607,
+        type: :signed
+      },
+      s32le: {
+        bytes_per_sample: 4,
+        min: -2_147_483_648,
+        max: 2_147_483_647,
+        pack_code: "l<",
+        float_scale: 2_147_483_647,
+        type: :signed
+      },
+      f32le: {
+        bytes_per_sample: 4,
+        pack_code: "e",
+        type: :float
+      },
+      f64le: {
+        bytes_per_sample: 8,
+        pack_code: "g",
+        type: :float
       }
     }.freeze
 
@@ -67,6 +102,39 @@ module SoundUtil
         format: format,
         buffer: buffer
       )
+    end
+
+    def self.from_data(data, format = nil, codec: nil, **kwargs)
+      fmt = format || SoundUtil::Codec.detect(data)
+      raise ArgumentError, "could not detect format" unless fmt
+
+      SoundUtil::Codec.decode(fmt, data, codec: codec, **kwargs)
+    end
+
+    def self.from_file(path_or_io, format = nil, codec: nil, **kwargs)
+      if format
+        if path_or_io.respond_to?(:read)
+          path_or_io.binmode if path_or_io.respond_to?(:binmode)
+          SoundUtil::Codec.decode_io(format, path_or_io, codec: codec, **kwargs)
+        else
+          File.open(path_or_io, "rb") do |io|
+            SoundUtil::Codec.decode_io(format, io, codec: codec, **kwargs)
+          end
+        end
+      elsif path_or_io.respond_to?(:read)
+        path_or_io.binmode if path_or_io.respond_to?(:binmode)
+        fmt, io = SoundUtil::Magic.detect_io(path_or_io)
+        raise ArgumentError, "could not detect format" unless fmt
+
+        SoundUtil::Codec.decode_io(fmt, io, codec: codec, **kwargs)
+      else
+        File.open(path_or_io, "rb") do |io|
+          fmt, detected_io = SoundUtil::Magic.detect_io(io)
+          raise ArgumentError, "could not detect format" unless fmt
+
+          SoundUtil::Codec.decode_io(fmt, detected_io, codec: codec, **kwargs)
+        end
+      end
     end
 
     def each_frame
@@ -121,8 +189,27 @@ module SoundUtil
       io.write(to_string)
     end
 
-    def to_string
-      buffer.to_s
+    def to_string(format = nil, codec: nil, **kwargs)
+      case format&.to_sym
+      when nil, :pcm
+        buffer.to_s
+      else
+        SoundUtil::Codec.encode(format, self, codec: codec, **kwargs)
+      end
+    end
+
+    def to_file(path_or_io, format = :wav, codec: nil, **kwargs)
+      raise ArgumentError, "format required" unless format
+
+      if path_or_io.respond_to?(:write)
+        path_or_io.binmode if path_or_io.respond_to?(:binmode)
+        SoundUtil::Codec.encode_io(format, self, path_or_io, codec: codec, **kwargs)
+      else
+        File.open(path_or_io, "wb") do |io|
+          SoundUtil::Codec.encode_io(format, self, io, codec: codec, **kwargs)
+        end
+      end
+      self
     end
 
     def format_info
@@ -171,22 +258,15 @@ module SoundUtil
     def encode_value(value)
       info = format_info
 
-      case value
-      when Float
-        clamp = value.clamp(-1.0, 1.0)
-        if clamp >= 1.0
-          info[:max]
-        elsif clamp <= -1.0
-          info[:min]
-        else
-          (clamp * info[:float_scale]).round.clamp(info[:min], info[:max])
-        end
-      when Integer
-        value.clamp(info[:min], info[:max])
-      when nil
-        0
+      case info[:type]
+      when :signed
+        encode_signed_value(info, value)
+      when :unsigned
+        encode_unsigned_value(info, value)
+      when :float
+        encode_float_value(value)
       else
-        raise ArgumentError, "unsupported sample value: #{value.inspect}"
+        raise ArgumentError, "unsupported format type: #{info[:type].inspect}"
       end
     end
 
@@ -261,9 +341,19 @@ module SoundUtil
 
     def sample_to_float(sample)
       info = format_info
-      return -1.0 if sample <= info[:min]
 
-      sample.to_f / info[:float_scale]
+      case info[:type]
+      when :signed
+        (sample.to_f / info[:float_scale]).clamp(-1.0, 1.0)
+      when :unsigned
+        offset = info[:zero_offset]
+        scale = info[:float_scale]
+        ((sample - offset).to_f / scale).clamp(-1.0, 1.0)
+      when :float
+        sample.to_f.clamp(-1.0, 1.0)
+      else
+        raise ArgumentError, "unsupported format type: #{info[:type].inspect}"
+      end
     end
 
     def encoded_values_for_assignment(value, frame_count, channel_count)
@@ -323,6 +413,56 @@ module SoundUtil
         else
           raise ArgumentError, "unsupported channel assignment value: #{entry.inspect}"
         end
+      end
+    end
+
+    def encode_signed_value(info, value)
+      case value
+      when Float
+        clamp = value.clamp(-1.0, 1.0)
+        return info[:max] if clamp >= 1.0
+        return info[:min] if clamp <= -1.0
+
+        (clamp * info[:float_scale]).round.clamp(info[:min], info[:max])
+      when Integer
+        value.clamp(info[:min], info[:max])
+      when NilClass
+        0
+      else
+        raise ArgumentError, "unsupported sample value: #{value.inspect}"
+      end
+    end
+
+    def encode_unsigned_value(info, value)
+      zero = info[:zero_offset]
+      scale = info[:float_scale]
+
+      case value
+      when Float
+        clamp = value.clamp(-1.0, 1.0)
+        return info[:max] if clamp >= 1.0
+        return info[:min] if clamp <= -1.0
+
+        ((clamp * scale) + zero).round.clamp(info[:min], info[:max])
+      when Integer
+        value.clamp(info[:min], info[:max])
+      when NilClass
+        zero
+      else
+        raise ArgumentError, "unsupported sample value: #{value.inspect}"
+      end
+    end
+
+    def encode_float_value(value)
+      case value
+      when Float
+        value.clamp(-1.0, 1.0)
+      when Integer
+        value.to_f.clamp(-1.0, 1.0)
+      when NilClass
+        0.0
+      else
+        raise ArgumentError, "unsupported sample value: #{value.inspect}"
       end
     end
   end

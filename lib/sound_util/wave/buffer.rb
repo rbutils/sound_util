@@ -46,7 +46,8 @@ module SoundUtil
 
         @bytes_per_sample = format_info[:bytes_per_sample]
         @frame_stride = @bytes_per_sample * @channels
-        @pack_template = format_info[:pack_code] * @channels
+        @pack_code = format_info[:pack_code]
+        @pack_template = @pack_code ? (@pack_code * @channels) : nil
 
         total_bytes = @frames * @frame_stride
         @io_buffer = io_buffer || IO::Buffer.new(total_bytes)
@@ -64,13 +65,23 @@ module SoundUtil
 
       def write_frame(frame_idx, samples)
         validate_frame_index(frame_idx)
-        data = samples.pack(@pack_template)
-        @io_buffer.copy(IO::Buffer.for(data), frame_idx * @frame_stride)
+        offset = frame_idx * @frame_stride
+        data = if @pack_template
+                 samples.pack(@pack_template)
+               else
+                 encode_samples(samples)
+               end
+        @io_buffer.copy(IO::Buffer.for(data), offset)
       end
 
       def read_frame(frame_idx)
         validate_frame_index(frame_idx)
-        @io_buffer.get_string(frame_idx * @frame_stride, @frame_stride).unpack(@pack_template)
+        data = @io_buffer.get_string(frame_idx * @frame_stride, @frame_stride)
+        if @pack_template
+          data.unpack(@pack_template)
+        else
+          decode_samples(data)
+        end
       end
 
       def to_s
@@ -85,6 +96,41 @@ module SoundUtil
 
       def validate_frame_index(frame_idx)
         raise IndexError, "frame index out of bounds" unless frame_idx.between?(0, frames - 1)
+      end
+
+      def encode_samples(samples)
+        case @format
+        when :s24le
+          bytes = samples.flat_map do |sample|
+            value = sample.to_i
+            value += 0x1_000000 if value.negative?
+            value &= 0xFFFFFF
+
+            [value & 0xFF, (value >> 8) & 0xFF, (value >> 16) & 0xFF]
+          end
+          bytes.pack("C*")
+        else
+          raise ArgumentError, "unsupported format for encoding: #{@format.inspect}"
+        end
+      end
+
+      def decode_samples(data)
+        case @format
+        when :s24le
+          bytes = data.bytes
+          samples = []
+          bytes.each_slice(3) do |slice|
+            next unless slice.length == 3
+
+            b0, b1, b2 = slice
+            value = b0 | (b1 << 8) | (b2 << 16)
+            value -= 0x1_000000 if (b2 & 0x80).positive?
+            samples << value
+          end
+          samples
+        else
+          raise ArgumentError, "unsupported format for decoding: #{@format.inspect}"
+        end
       end
     end
   end

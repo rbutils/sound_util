@@ -42,4 +42,27 @@ RSpec.describe SoundUtil::Wave::Buffer do
     copy.read_frame(0).should == [10, 20]
     buffer.read_frame(0).should == [30, 40]
   end
+
+  it "supports 24-bit PCM samples" do
+    buf = described_class.new(channels: 1, sample_rate: 44_100, frames: 2, format: :s24le)
+    buf.write_frame(0, [1_000_000])
+    buf.write_frame(1, [-2_000_000])
+
+    buf.read_frame(0).should == [1_000_000]
+    buf.read_frame(1).should == [-2_000_000]
+  end
+
+  it "supports unsigned 8-bit PCM" do
+    buf = described_class.new(channels: 2, sample_rate: 44_100, frames: 1, format: :u8)
+    buf.write_frame(0, [0, 255])
+
+    buf.read_frame(0).should == [0, 255]
+  end
+
+  it "supports floating-point formats" do
+    buf = described_class.new(channels: 1, sample_rate: 48_000, frames: 1, format: :f32le)
+    buf.write_frame(0, [0.25])
+
+    buf.read_frame(0).first.should be_within(1e-6).of(0.25)
+  end
 end

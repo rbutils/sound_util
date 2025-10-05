@@ -5,6 +5,55 @@ require "stringio"
 require "image_util/terminal"
 
 RSpec.describe SoundUtil::Wave do
+  describe "codec integration" do
+    let(:source_wave) do
+      described_class.new(channels: 2, sample_rate: 22_050, frames: 3, format: :f32le) do |frame|
+        [Math.sin(frame), Math.cos(frame)]
+      end
+    end
+
+    it "loads from encoded WAV data" do
+      data = SoundUtil::Codec::Wav.encode(:wav, source_wave)
+
+      decoded = described_class.from_data(data)
+
+      decoded.channels.should == source_wave.channels
+      decoded.sample_rate.should == source_wave.sample_rate
+      decoded.frames.should == source_wave.frames
+      decoded[1, 0].should be_within(1e-4).of(source_wave[1, 0])
+    end
+
+    it "loads from IO with format detection" do
+      data = SoundUtil::Codec::Wav.encode(:wav, source_wave)
+      io = StringIO.new(data)
+
+      decoded = described_class.from_file(io)
+
+      decoded.frames.should == source_wave.frames
+      decoded.format.should == :f32le
+    end
+
+    it "writes encoded WAV data" do
+      wave = described_class.new(frames: 2) { 0.1 }
+
+      encoded = wave.to_string(:wav)
+      encoded.start_with?("RIFF").should be(true)
+
+      decoded = described_class.from_data(encoded)
+      decoded.frames.should == wave.frames
+      decoded[0].should be_within(1e-4).of(0.1)
+    end
+
+    it "writes to IO objects" do
+      wave = described_class.new(frames: 1) { 0.2 }
+      io = StringIO.new
+
+      wave.to_file(io, :wav)
+
+      io.string.start_with?("RIFF").should be(true)
+    end
+  end
+
   describe ".new" do
     it "defaults to mono 44.1 kHz one-second buffer" do
       wave = described_class.new
