@@ -17,3 +17,5 @@ gem "rubocop", "~> 1.21"
 gem "simplecov", "~> 0.22"
 
 gem "thor", "~> 1.2"
+
+gem "gem-release"
