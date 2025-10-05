@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "image_util"
 require_relative "filter"
 require_relative "generator"
 require_relative "sink"
@@ -10,6 +11,7 @@ module SoundUtil
 
     extend SoundUtil::Generator::Tone
     extend SoundUtil::Generator::Combine
+    include ImageUtil::Inspectable
     include SoundUtil::Filter::Gain
     include SoundUtil::Filter::Fade
     include SoundUtil::Filter::Combine
@@ -210,6 +212,10 @@ module SoundUtil
         end
       end
       self
+    end
+
+    def inspect_image
+      preview_image
     end
 
     def format_info

@@ -18,19 +18,8 @@ module SoundUtil
         self
       end
 
-      def preview_image(width:, height:, caption: nil)
+      def preview_image(width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT, caption: nil)
         PreviewRenderer.new(self, width: width, height: height, caption: caption).image
-      end
-
-      def pretty_print(pp)
-        renderer = PreviewRenderer.new(self)
-        if (rendered = renderer.render)
-          pp.flush
-          pp.output << rendered
-          pp.text("", 0)
-        else
-          super
-        end
       end
 
       class PreviewRenderer

@@ -128,6 +128,8 @@ SoundUtil::Wave.sine(duration_seconds: 1, frequency: 440).preview
 
 Renders a compact Sixel chart (requires ImageUtil and terminal support). Pass `width:`/`height:` options to adjust the preview
 
+Wave instances now implement `inspect_image`, so pretty-printing in IRB (`pp wave`) renders the same preview via ImageUtil's inspectable interface.
+
 ### CLI
 
 The Thor CLI emits raw PCM suitable for piping into a sound device:
