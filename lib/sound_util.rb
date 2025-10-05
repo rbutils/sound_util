@@ -11,5 +11,6 @@ module SoundUtil
   autoload :Generator, "sound_util/generator"
   autoload :Magic, "sound_util/magic"
   autoload :Sink, "sound_util/sink"
+  autoload :Util, "sound_util/util"
   autoload :Wave, "sound_util/wave"
 end

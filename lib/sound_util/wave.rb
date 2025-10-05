@@ -257,7 +257,7 @@ module SoundUtil
         sample.map { |value| encode_value(value) }
       else
         encoded = encode_value(sample)
-        Array.new(channels, encoded)
+        Util.fill_channels(encoded, channels)
       end
     end
 
@@ -323,26 +323,15 @@ module SoundUtil
     end
 
     def build_subwave(frame_indices, channel_indices)
-      new_buffer = Buffer.new(
-        channels: channel_indices.length,
-        sample_rate: sample_rate,
-        frames: frame_indices.length,
-        format: format
-      )
+      new_buffer = Util.build_buffer(self, channels: channel_indices.length, frames: frame_indices.length)
 
       frame_indices.each_with_index do |frame_idx, new_frame_idx|
         source = buffer.read_frame(frame_idx)
-        selected = channel_indices.map { |channel_idx| source[channel_idx] }
+        selected = Util.extract_selected_channels(source, channel_indices)
         new_buffer.write_frame(new_frame_idx, selected)
       end
 
-      Wave.new(
-        channels: channel_indices.length,
-        sample_rate: sample_rate,
-        frames: frame_indices.length,
-        format: format,
-        buffer: new_buffer
-      )
+      Util.build_wave_from_buffer(self, new_buffer)
     end
 
     def sample_to_float(sample)
@@ -365,29 +354,21 @@ module SoundUtil
     def encoded_values_for_assignment(value, frame_count, channel_count)
       case value
       when Wave
-        ensure_wave_compatibility!(value, frame_count, channel_count)
+        Util.ensure_same_kind!(self, value)
+        Util.assert_dimensions!(value, frames: frame_count, channels: channel_count)
+
         Array.new(frame_count) do |frame_idx|
           frame = value.buffer.read_frame(frame_idx)
-          channel_count.times.map { |ch_idx| frame[ch_idx] }
+          Util.extract_channel_samples(frame, channel_count)
         end
       when Numeric
         encoded = encode_value(value)
-        Array.new(frame_count) { Array.new(channel_count, encoded) }
+        Util.fill_frames(encoded, frame_count, channel_count)
       when Array
         encode_array_assignment(value, frame_count, channel_count)
       else
         raise ArgumentError, "unsupported assignment value: #{value.inspect}"
       end
-    end
-
-    def ensure_wave_compatibility!(other_wave, frame_count, channel_count)
-      unless other_wave.frames == frame_count && other_wave.channels == channel_count
-        raise ArgumentError, "wave dimensions mismatch"
-      end
-
-      return if other_wave.format == format && other_wave.sample_rate == sample_rate
-
-      raise ArgumentError, "wave format or sample rate mismatch"
     end
 
     def encode_array_assignment(value, frame_count, channel_count)
@@ -403,19 +384,19 @@ module SoundUtil
 
     def encode_channel_values(entry, channel_count)
       if channel_count == 1
-        [encode_value(entry)]
+        Util.fill_channels(encode_value(entry), 1)
       else
         case entry
         when Numeric
           encoded = encode_value(entry)
-          Array.new(channel_count, encoded)
+          Util.fill_channels(encoded, channel_count)
         when Array
           raise ArgumentError, "channel count mismatch" unless entry.length == channel_count
 
           entry.map { |val| encode_value(val) }
         when NilClass
           encoded = encode_value(0)
-          Array.new(channel_count, encoded)
+          Util.fill_channels(encoded, channel_count)
         else
           raise ArgumentError, "unsupported channel assignment value: #{entry.inspect}"
         end
