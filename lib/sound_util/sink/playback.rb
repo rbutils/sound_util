@@ -3,11 +3,23 @@
 module SoundUtil
   module Sink
     module Playback
+      FORMAT_FLAGS = {
+        u8: "U8",
+        s16le: "S16_LE",
+        s24le: "S24_LE",
+        s32le: "S32_LE",
+        f32le: "FLOAT_LE",
+        f64le: "FLOAT64_LE"
+      }.freeze
+
       DEFAULT_COMMAND = lambda do |wave|
+        flag = FORMAT_FLAGS[wave.format]
+        raise SoundUtil::Error, "unsupported playback format: #{wave.format}" unless flag
+
         [
           "aplay",
           "-t", "raw",
-          "-f", "S16_LE",
+          "-f", flag,
           "-c", wave.channels.to_s,
           "-r", wave.sample_rate.to_s,
           "-"

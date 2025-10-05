@@ -369,11 +369,23 @@ RSpec.describe SoundUtil::Wave do
       fake_io.define_singleton_method(:close_write) { close }
 
       Process.should_receive(:wait).with(1234)
-      IO.should_receive(:popen).with(array_including("aplay", "-"), "wb").and_yield(fake_io)
+      IO.should_receive(:popen).with(array_including("aplay", "-f", "S16_LE", "-"), "wb").and_yield(fake_io)
 
       wave.play
 
       fake_io.string.bytesize.should == wave.buffer.size
+    end
+
+    it "selects playback format flag based on wave format" do
+      wave = described_class.new(frames: 1, format: :f32le) { 0.1 }
+      fake_io = StringIO.new
+      fake_io.define_singleton_method(:pid) { 99 }
+      fake_io.define_singleton_method(:close_write) { close }
+
+      Process.should_receive(:wait).with(99)
+      IO.should_receive(:popen).with(array_including("-f", "FLOAT_LE"), "wb").and_yield(fake_io)
+
+      wave.play
     end
 
     it "raises SoundUtil::Error when command missing" do

@@ -5,8 +5,8 @@ require_relative "lib/sound_util/version"
 Gem::Specification.new do |spec|
   spec.name = "sound_util"
   spec.version = SoundUtil::VERSION
-  spec.authors = ["sound_util contributors"]
-  spec.email = ["sound_util@example.com"]
+  spec.authors = ["hmdne"]
+  spec.email = ["54514036+hmdne@users.noreply.github.com"]
 
   spec.summary = "Simple sound buffer helpers"
   spec.description = "Lightweight audio buffer utilities for manipulating sound in memory using IO::Buffer."
@@ -33,8 +33,6 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "base64"
-  spec.add_dependency "ffi", "~> 1.16"
   spec.add_dependency "image_util", ">= 0.5.0"
   spec.add_dependency "io-console", "~> 0.5"
   spec.add_dependency "thor", "~> 1.2"
