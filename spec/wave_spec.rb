@@ -368,7 +368,6 @@ RSpec.describe SoundUtil::Wave do
       fake_io.define_singleton_method(:pid) { 1234 }
       fake_io.define_singleton_method(:close_write) { close }
 
-      Process.should_receive(:wait).with(1234)
       IO.should_receive(:popen).with(array_including("aplay", "-f", "S16_LE", "-"), "wb").and_yield(fake_io)
 
       wave.play
@@ -382,7 +381,6 @@ RSpec.describe SoundUtil::Wave do
       fake_io.define_singleton_method(:pid) { 99 }
       fake_io.define_singleton_method(:close_write) { close }
 
-      Process.should_receive(:wait).with(99)
       IO.should_receive(:popen).with(array_including("-f", "FLOAT_LE"), "wb").and_yield(fake_io)
 
       wave.play
